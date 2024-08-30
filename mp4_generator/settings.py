@@ -77,12 +77,8 @@ WSGI_APPLICATION = 'mp4_generator.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'mp4_generator', 
-        'USER': 'postgres',  
-        'PASSWORD': '203599art1313',  
-        'HOST': 'localhost',  
-        'PORT': '5432',  
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / "db.sqlite3",
     }
 }
 
