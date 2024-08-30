@@ -6,7 +6,7 @@ import os
 from .models import RequestLog  # импорт модели
 
 # change_settings({"IMAGEMAGICK_BINARY": r"E:\ImageMagick-7.1.1-Q16-HDRI\magick.exe"}) #windows
-change_settings({"IMAGEMAGICK_BINARY": "/usr/bin/magick"}) #linux
+change_settings({"IMAGEMAGICK_BINARY": "/usr/bin/convert"}) #linux
 
 def create_video(request):
     text = request.GET.get('text', 'Hello') #если параметр не указан, по умолчанию будет "Hello"
