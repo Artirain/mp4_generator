@@ -1,46 +1,58 @@
 from django.http import HttpResponse
-from moviepy.editor import TextClip, CompositeVideoClip #Классы из библиотеки MoviePy для работы с видео и текстом.
+from moviepy.editor import TextClip, ColorClip, CompositeVideoClip
 from moviepy.config import change_settings
 import tempfile
 import os
-from .models import RequestLog  # импорт модели
+from .models import RequestLog
 
-# change_settings({"IMAGEMAGICK_BINARY": r"E:\ImageMagick-7.1.1-Q16-HDRI\magick.exe"}) #windows
-change_settings({"IMAGEMAGICK_BINARY": "/usr/bin/convert"}) #linux
+
+# change_settings({"IMAGEMAGICK_BINARY": r"E:\ImageMagick-7.1.1-Q16-HDRI\magick.exe"})  # Windows
+change_settings({"IMAGEMAGICK_BINARY": "/usr/bin/convert"})  # Linux
 
 def create_video(request):
-    text = request.GET.get('text', 'Hello') #если параметр не указан, по умолчанию будет "Hello"
+    text = request.GET.get('text', 'Hello')
     if not text:
         return HttpResponse("Text parameter is required", status=400)
 
-    # сохраняем запрос в базе данных
+    # сохранить запрос в БД
     RequestLog.objects.create(text=text)
 
-    # создаем видео с размером больше 100x100 для анимации
-    fontsize = 20
-    text_clip = TextClip(text, fontsize=fontsize, color='white', bg_color='pink', size=(300, 100))
-    text_clip = text_clip.set_duration(3) #продолжительность текста в 3 секунды
+    #текстовый клип
+    fontsize = 30
+    text_clip = TextClip(text, fontsize=fontsize, color='white', bg_color='black', size=(2000, 100))
+    text_width = text_clip.w
+
+    screen_width = 300  #ширина экрана видео
+    max_duration = 3  #максимальная длительность видео
+
     
-    # перемещаем текст по горизонтали
-    def frame(t):
+    speed = (text_width + screen_width) / max_duration
+
+    #создание кадра с текстом
+    def make_frame(t):
+        position = int(speed * t)
         frame = text_clip.get_frame(t)
-        frame_width = text_clip.w
-        position = int(t * 100) % frame_width
-        return frame[:, position:position + 100]
+        start_position = max(0, position - screen_width)
+        end_position = min(text_width, position + screen_width)
+        
+        return frame[:, start_position:end_position]
 
-    # создаем видео с бегущим текстом в 100x100 пикселей
-    video = CompositeVideoClip([text_clip.set_make_frame(frame)], size=(100, 100))
-    video = video.set_duration(3)
+    #статичный фон
+    background_clip = ColorClip(size=(screen_width, 100), color=(0, 0, 0))  # Черный фон
 
-    # создаем временный файл
+    #видео с бегущим текстом
+    video = CompositeVideoClip([background_clip.set_duration(max_duration), text_clip.set_make_frame(make_frame)], size=(screen_width, 100))
+    video = video.set_duration(max_duration)  # Устанавливаем фиксированную длительность
+
+    #temp-файл
     with tempfile.NamedTemporaryFile(delete=False, suffix='.mp4') as temp_file:
         temp_file.close()
         video.write_videofile(temp_file.name, fps=24)
         
-        # Отправляем файл как
+        
         with open(temp_file.name, 'rb') as f:
             response = HttpResponse(f.read(), content_type='video/mp4')
-            response['Content-Disposition'] = 'attachment; filename="my_video.mp4"' #заголовок для загрузки файла
+            response['Content-Disposition'] = 'attachment; filename="my_video.mp4"'
             
         os.remove(temp_file.name)
         return response
